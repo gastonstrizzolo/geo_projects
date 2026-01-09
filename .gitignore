@@ -1,3 +1,25 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environments
+.env
+.venv/
 geo/*
-cache/*
+**/cache/**
+
+# Notebooks
+.ipynb_checkpoints/
+city-boundary-dashboard/notebooks/cache/
+
+# IDE
+.vscode/
+
+# Generated data/outputs (retain raw inputs if needed)
+city-boundary-dashboard/data/processed/
+city-boundary-dashboard/data/outputs/
+
+# Binary assets
 images/

@@ -61,6 +61,8 @@ def make_square_grid(boundary_gdf: gpd.GeoDataFrame, cell_size_m: float = 500.0,
     boundary_proj = boundary_gdf.to_crs(projected_crs)
     minx, miny, maxx, maxy = boundary_proj.total_bounds
 
+    full_cell_area_km2 = (cell_size_m * cell_size_m) / 1e6  # area of full square cell before clipping
+
     squares = []
     x = minx
     while x < maxx:
@@ -73,6 +75,8 @@ def make_square_grid(boundary_gdf: gpd.GeoDataFrame, cell_size_m: float = 500.0,
     grid = gpd.GeoDataFrame(geometry=squares, crs=projected_crs)
     grid = gpd.overlay(grid, boundary_proj, how="intersection")
     grid["area_km2"] = grid.geometry.area / 1e6
+    grid["cell_area_km2_full"] = full_cell_area_km2
+    grid["coverage_ratio"] = grid["area_km2"] / grid["cell_area_km2_full"]
     grid = grid[grid["area_km2"] > 0].reset_index(drop=True)
     grid["cell_id"] = grid.index.astype(int)
     return grid
@@ -112,8 +116,23 @@ def fetch_street_network(polygon_wgs84: Polygon, network_type: str = "walk"):
 
 def fetch_buildings_within_boundary(polygon_wgs84: Polygon) -> gpd.GeoDataFrame:
     """Fetch building footprints from OSM within polygon (WGS84)."""
+    import logging
+    log = logging.getLogger(__name__)
+    
     tags = {"building": True}
     gdf = ox.features_from_polygon(polygon_wgs84, tags=tags)
+    
+    # Debug inspection
+    if not gdf.empty:
+        log.info("=== BUILDING GDF DEBUG ===")
+        log.info(f"Shape: {gdf.shape}")
+        log.info(f"CRS: {gdf.crs}")
+        log.info(f"Columns ({len(gdf.columns)}): {list(gdf.columns)}")
+        log.info(f"Geometry types: {gdf.geometry.type.value_counts().to_dict()}")
+        log.info(f"Building tag sample: {gdf['building'].value_counts().head(10).to_dict()}")
+        log.info(f"Columns with colons: {[c for c in gdf.columns if ':' in str(c)]}")
+        log.info("=== END DEBUG ===")
+    
     if gdf.empty:
         return gdf
     # Keep only polygonal geometries
@@ -159,7 +178,15 @@ def aggregate_buildings_to_grid(
     grid_proj = grid_proj.merge(agg, on="cell_id", how="left")
     grid_proj["building_count"] = grid_proj["building_count"].fillna(0).astype(int)
     grid_proj["building_area_km2"] = grid_proj["building_area_km2"].fillna(0.0)
-    grid_proj["building_density"] = grid_proj["building_count"] / grid_proj["area_km2"]
-    grid_proj["footprint_coverage"] = (grid_proj["building_area_km2"] / grid_proj["area_km2"] * 100).fillna(0)
+    # Use full cell area (pre-clip) to avoid inflated densities on sliver cells
+    if "cell_area_km2_full" in grid_proj.columns:
+        denom_area = grid_proj["cell_area_km2_full"]
+    else:
+        denom_area = grid_proj["area_km2"]
+
+    grid_proj["building_density"] = grid_proj["building_count"] / denom_area.replace(0, np.nan)
+    grid_proj["building_density"] = grid_proj["building_density"].fillna(0)
+
+    grid_proj["footprint_coverage"] = (grid_proj["building_area_km2"] / denom_area * 100).fillna(0)
     
     return grid_proj

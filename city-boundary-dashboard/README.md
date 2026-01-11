@@ -278,6 +278,14 @@ This transparency is intentional and essential for responsible spatial analysis.
 * Academic research
 * Geospatial portfolio projects
 
+
+## Data Sources
+
+### Neighborhoods Boundaries
+Download the official Córdoba neighborhoods KML from:
+- Source: [Municipalidad de Córdoba - Datos Abiertos]
+- Save to: `data/raw/neighborhoods.kml`
+- Or direct link: [https://gobiernoabierto.cordoba.gob.ar/data/datos-abiertos/categoria/geografia-y-mapas/barrios-de-la-ciudad/118]
 ---
 
 ## Author

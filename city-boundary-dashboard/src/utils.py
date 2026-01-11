@@ -48,3 +48,22 @@ def write_json(obj: dict, path: Path | str) -> None:
     ensure_dir(p.parent)
     with p.open("w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=2)
+
+
+def load_neighborhoods_from_kml(kml_path: str | Path) -> "gpd.GeoDataFrame":
+    """Load neighborhood polygons from KML file.
+    
+    Parameters:
+        kml_path: Path to KML file (e.g., data/raw/neighborhoods.kml)
+    
+    Returns:
+        GeoDataFrame with neighborhood geometries in WGS84 (EPSG:4326)
+    """
+    import geopandas as gpd
+    kml_path = Path(kml_path)
+    if not kml_path.exists():
+        raise FileNotFoundError(f"KML file not found: {kml_path}")
+    
+    gdf = gpd.read_file(kml_path, driver='KML')
+    gdf = gdf.to_crs(4326)
+    return gdf

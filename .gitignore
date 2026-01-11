@@ -20,6 +20,7 @@ city-boundary-dashboard/notebooks/cache/
 # Generated data/outputs (retain raw inputs if needed)
 city-boundary-dashboard/data/processed/
 city-boundary-dashboard/data/outputs/
+city-boundary-dashboard/data/raw/
 
 # Binary assets
 images/

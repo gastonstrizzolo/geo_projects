@@ -86,6 +86,12 @@ def run(osm_id: str = "R5167559", grid_size_m: float = 500.0) -> None:
         log.warning("Landuse features clipped to empty set.")
         return
 
+    # Filter to polygon geometries only (remove any linestrings)
+    before_count = len(lu)
+    lu = lu[lu.geom_type.isin(['Polygon', 'MultiPolygon'])].copy()
+    if len(lu) < before_count:
+        log.info("Filtered landuse: kept %d polygon features, dropped %d non-polygon features", len(lu), before_count - len(lu))
+
     lu = classify_landuse(lu)
     summary = summarize_landuse(lu)
 
@@ -114,6 +120,10 @@ def run(osm_id: str = "R5167559", grid_size_m: float = 500.0) -> None:
         return
 
     pois = categorize_pois(pois_raw)
+    # Convert to projected CRS
+    pois = pois.to_crs(PROJECTED_CRS)
+    log.info("POIs converted to CRS EPSG:%d", PROJECTED_CRS)
+    
     # Keep only safe columns for GPKG export
     safe_cols = ["geometry", "category", "name"]
     existing_safe = [c for c in safe_cols if c in pois.columns]
@@ -167,6 +177,11 @@ def run(osm_id: str = "R5167559", grid_size_m: float = 500.0) -> None:
         
         # Save edges and nodes as GeoPackage (easier for GIS inspection)
         nodes, edges = ox.graph_to_gdfs(street_graph)
+        # Convert to projected CRS
+        edges = edges.to_crs(PROJECTED_CRS)
+        nodes = nodes.to_crs(PROJECTED_CRS)
+        log.info("Street network converted to CRS EPSG:%d", PROJECTED_CRS)
+        
         edges_path = paths["processed"] / "street_edges.gpkg"
         nodes_path = paths["processed"] / "street_nodes.gpkg"
         edges.to_file(edges_path, layer="edges", driver="GPKG")
@@ -220,6 +235,10 @@ def run(osm_id: str = "R5167559", grid_size_m: float = 500.0) -> None:
         if dropped:
             log.info("Dropping %d building columns not in safe list (e.g., %s)", len(dropped), dropped[:3])
         buildings_clean = buildings_clean[existing_safe].copy()
+        
+        # Convert to projected CRS
+        buildings_clean = buildings_clean.to_crs(PROJECTED_CRS)
+        log.info("Buildings converted to CRS EPSG:%d", PROJECTED_CRS)
         
         # Aggregate to grid
         building_grid = aggregate_buildings_to_grid(buildings_clean, grid, projected_crs=PROJECTED_CRS)

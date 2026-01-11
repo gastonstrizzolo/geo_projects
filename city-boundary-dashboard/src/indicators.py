@@ -98,7 +98,7 @@ def aggregate_pois_to_grid(
     counts = joined.groupby("cell_id").size().reset_index(name="count")
     grid_proj = grid_proj.merge(counts, on="cell_id", how="left")
     grid_proj["count"] = grid_proj["count"].fillna(0).astype(int)
-    grid_proj["density_per_km2"] = grid_proj["count"] / grid_proj["area_km2"]
+    grid_proj["density_per_km2"] = grid_proj["count"] / grid_proj["cell_area_km2_full"]
     return grid_proj
 
 
@@ -166,8 +166,13 @@ def aggregate_buildings_to_grid(
     # Compute building areas
     buildings_proj["building_area_km2"] = buildings_proj.geometry.area / 1e6
 
-    # Spatial join buildings to grid
-    joined = gpd.sjoin(buildings_proj, grid_proj[["cell_id", "geometry"]], how="inner", predicate="intersects")
+    # Use building centroids for cell assignment (one building = one cell)
+    # to avoid double-counting buildings that cross cell boundaries
+    buildings_centroids = buildings_proj.copy()
+    buildings_centroids['geometry'] = buildings_proj.geometry.centroid
+    
+    # Spatial join building centroids to grid (each building assigned to exactly one cell)
+    joined = gpd.sjoin(buildings_centroids, grid_proj[["cell_id", "geometry"]], how="inner", predicate="within")
     
     # Aggregate by cell
     agg = joined.groupby("cell_id").agg({

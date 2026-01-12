@@ -12,8 +12,11 @@ from .utils import PROJECTED_CRS
 
 
 DEFAULT_POI_TAGS: Dict[str, object] = {
-    "amenity": ["school", "hospital", "pharmacy"],
-    "leisure": ["park"],
+    "amenity": ["school", "hospital", "pharmacy", "restaurant", "cafe", 
+                "bank", "post_office", "library", "police", "fire_station",
+                "clinic", "dentist", "fuel", "parking", "place_of_worship"],
+    "leisure": ["park", "playground", "sports_centre"],
+    "shop": ["supermarket", "convenience", "bakery", "clothes"],
 }
 
 
